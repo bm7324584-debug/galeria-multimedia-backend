@@ -10,9 +10,9 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// =========================
+// ==========================
 // CREAR CARPETA UPLOADS
-// =========================
+// ==========================
 
 if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads', { recursive: true });
@@ -20,17 +20,17 @@ if (!fs.existsSync('uploads')) {
 
 app.use('/uploads', express.static('uploads'));
 
-// =========================
+// ==========================
 // CONEXIÓN MONGODB
-// =========================
+// ==========================
 
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('✅ MongoDB conectado'))
-.catch(err => console.error('❌ Error MongoDB:', err));
+    .then(() => console.log('✅ MongoDB conectado'))
+    .catch(err => console.error('❌ Error MongoDB:', err));
 
-// =========================
-// MULTER
-// =========================
+// ==========================
+// CONFIGURACIÓN MULTER
+// ==========================
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -49,12 +49,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// =========================
+// ==========================
 // ESQUEMA
-// =========================
+// ==========================
 
 const MultimediaSchema = new mongoose.Schema({
-
     titulo: {
         type: String,
         required: true
@@ -79,7 +78,6 @@ const MultimediaSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-
 });
 
 const Multimedia = mongoose.model(
@@ -87,21 +85,19 @@ const Multimedia = mongoose.model(
     MultimediaSchema
 );
 
-// =========================
+// ==========================
 // RUTA PRINCIPAL
-// =========================
+// ==========================
 
 app.get('/', (req, res) => {
-
     res.json({
         mensaje: 'API Multimedia funcionando correctamente'
     });
-
 });
 
-// =========================
+// ==========================
 // OBTENER TODOS
-// =========================
+// ==========================
 
 app.get('/multimedia', async (req, res) => {
 
@@ -121,17 +117,18 @@ app.get('/multimedia', async (req, res) => {
     }
 });
 
-// =========================
-// OBTENER UNO
-// =========================
+// ==========================
+// OBTENER POR ID
+// ==========================
 
 app.get('/multimedia/:id', async (req, res) => {
 
     try {
 
-        const elemento = await Multimedia.findById(
-            req.params.id
-        );
+        const elemento =
+            await Multimedia.findById(
+                req.params.id
+            );
 
         if (!elemento) {
 
@@ -150,9 +147,9 @@ app.get('/multimedia/:id', async (req, res) => {
     }
 });
 
-// =========================
+// ==========================
 // CREAR
-// =========================
+// ==========================
 
 app.post(
     '/multimedia',
@@ -176,14 +173,15 @@ app.post(
 
                 descripcion: req.body.descripcion,
 
-                imagenUrl: imagen
-                    ? `/uploads/${imagen}`
-                    : '',
+                imagenUrl:
+                    imagen
+                        ? `/uploads/${imagen}`
+                        : '',
 
-                audioUrl: audio
-                    ? `/uploads/${audio}`
-                    : ''
-
+                audioUrl:
+                    audio
+                        ? `/uploads/${audio}`
+                        : ''
             });
 
             await nuevo.save();
@@ -204,52 +202,92 @@ app.post(
     }
 );
 
-// =========================
+// ==========================
 // EDITAR
-// =========================
+// ==========================
 
-app.put('/multimedia/:id', async (req, res) => {
+app.put(
+    '/multimedia/:id',
+    upload.fields([
+        { name: 'imagen', maxCount: 1 },
+        { name: 'audio', maxCount: 1 }
+    ]),
+    async (req, res) => {
 
-    try {
+        try {
 
-        const actualizado =
-            await Multimedia.findByIdAndUpdate(
+            const elemento =
+                await Multimedia.findById(
+                    req.params.id
+                );
 
-                req.params.id,
+            if (!elemento) {
 
-                {
-                    titulo: req.body.titulo,
-                    descripcion: req.body.descripcion
-                },
+                return res.status(404).json({
+                    mensaje: 'Elemento no encontrado'
+                });
+            }
 
-                {
-                    new: true
-                }
-            );
+            let imagenUrl =
+                elemento.imagenUrl;
 
-        if (!actualizado) {
+            let audioUrl =
+                elemento.audioUrl;
 
-            return res.status(404).json({
-                mensaje: 'Elemento no encontrado'
+            if (
+                req.files &&
+                req.files.imagen
+            ) {
+
+                imagenUrl =
+                    `/uploads/${req.files.imagen[0].filename}`;
+            }
+
+            if (
+                req.files &&
+                req.files.audio
+            ) {
+
+                audioUrl =
+                    `/uploads/${req.files.audio[0].filename}`;
+            }
+
+            const actualizado =
+                await Multimedia.findByIdAndUpdate(
+
+                    req.params.id,
+
+                    {
+                        titulo: req.body.titulo,
+                        descripcion: req.body.descripcion,
+                        imagenUrl,
+                        audioUrl
+                    },
+
+                    {
+                        new: true
+                    }
+                );
+
+            res.json({
+                mensaje: 'Elemento actualizado correctamente',
+                actualizado
+            });
+
+        } catch (error) {
+
+            console.error(error);
+
+            res.status(500).json({
+                error: error.message
             });
         }
-
-        res.json({
-            mensaje: 'Elemento actualizado correctamente',
-            actualizado
-        });
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        });
     }
-});
+);
 
-// =========================
+// ==========================
 // ELIMINAR
-// =========================
+// ==========================
 
 app.delete('/multimedia/:id', async (req, res) => {
 
@@ -279,16 +317,12 @@ app.delete('/multimedia/:id', async (req, res) => {
     }
 });
 
-// =========================
+// ==========================
 // SERVIDOR
-// =========================
+// ==========================
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-
-    console.log(
-        `🚀 Servidor ejecutándose en puerto ${PORT}`
-    );
-
+    console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
 });
