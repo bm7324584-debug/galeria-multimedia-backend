@@ -2,12 +2,21 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const multer = require('multer');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+
+// =========================
+// CREAR CARPETA UPLOADS
+// =========================
+
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads', { recursive: true });
+}
 
 app.use('/uploads', express.static('uploads'));
 
@@ -27,6 +36,7 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
     },
+
     filename: (req, file, cb) => {
         cb(
             null,
@@ -44,6 +54,7 @@ const upload = multer({ storage });
 // =========================
 
 const MultimediaSchema = new mongoose.Schema({
+
     titulo: {
         type: String,
         required: true
@@ -68,6 +79,7 @@ const MultimediaSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
+
 });
 
 const Multimedia = mongoose.model(
@@ -80,9 +92,11 @@ const Multimedia = mongoose.model(
 // =========================
 
 app.get('/', (req, res) => {
+
     res.json({
         mensaje: 'API Multimedia funcionando correctamente'
     });
+
 });
 
 // =========================
@@ -93,7 +107,8 @@ app.get('/multimedia', async (req, res) => {
 
     try {
 
-        const elementos = await Multimedia.find()
+        const elementos = await Multimedia
+            .find()
             .sort({ fechaCreacion: -1 });
 
         res.json(elementos);
@@ -119,6 +134,7 @@ app.get('/multimedia/:id', async (req, res) => {
         );
 
         if (!elemento) {
+
             return res.status(404).json({
                 mensaje: 'Elemento no encontrado'
             });
@@ -167,16 +183,19 @@ app.post(
                 audioUrl: audio
                     ? `/uploads/${audio}`
                     : ''
+
             });
 
             await nuevo.save();
 
             res.status(201).json({
-                mensaje: 'Elemento creado',
+                mensaje: 'Elemento creado correctamente',
                 nuevo
             });
 
         } catch (error) {
+
+            console.error(error);
 
             res.status(500).json({
                 error: error.message
@@ -216,7 +235,7 @@ app.put('/multimedia/:id', async (req, res) => {
         }
 
         res.json({
-            mensaje: 'Elemento actualizado',
+            mensaje: 'Elemento actualizado correctamente',
             actualizado
         });
 
@@ -271,4 +290,5 @@ app.listen(PORT, () => {
     console.log(
         `🚀 Servidor ejecutándose en puerto ${PORT}`
     );
+
 });
